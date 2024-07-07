@@ -60,10 +60,7 @@ public class InterfazGrafica {
     private DefaultTableModel tableModel;
 
     public InterfazGrafica() {
-        // Establecer conexión a la base de datos PostgreSQL
         connectDB();
-
-        // Crear la interfaz gráfica
         createGUI();
     }
 
@@ -85,29 +82,24 @@ public class InterfazGrafica {
         frame.setSize(600, 400);
         frame.setLayout(new BorderLayout());
 
-        // Panel superior para el ComboBox
         JPanel topPanel = new JPanel();
         topPanel.setLayout(new FlowLayout());
         JLabel yearLabel = new JLabel("Año:");
         topPanel.add(yearLabel);
 
-        // Combo box para seleccionar el año de carrera
         comboBox = new JComboBox<>();
         populateComboBox();
         comboBox.addActionListener(e -> {
-            // Cuando se seleccione un año, actualizar la tabla de corredores
             updateTable();
         });
         topPanel.add(comboBox);
 
         frame.add(topPanel, BorderLayout.NORTH);
 
-        // Tabla para mostrar los datos de corredores y carreras
         tableModel = new DefaultTableModel();
         table = new JTable(tableModel);
         JScrollPane scrollPane = new JScrollPane(table);
 
-        // Centrar el contenido de las celdas
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(JLabel.CENTER);
         table.setDefaultRenderer(Object.class, centerRenderer);
@@ -135,7 +127,6 @@ public class InterfazGrafica {
         try {
             String selectedYear = (String) comboBox.getSelectedItem();
             if (selectedYear != null) {
-                // Consulta para obtener los corredores que participaron en las carreras del año seleccionado
                 String query = "SELECT DISTINCT ON (d.driver_id) d.driver_id, d.forename, d.surname, d.dob, d.nationality, " +
                         "(SELECT COUNT(*) FROM driver_standings ds INNER JOIN races r ON ds.race_id = r.race_id " +
                         "WHERE ds.driver_id = d.driver_id AND r.year = ? AND ds.position = 1) AS carreras_ganadas, " +
@@ -165,7 +156,7 @@ public class InterfazGrafica {
                     row.add(rs.getString("forename") + " " + rs.getString("surname"));
                     row.add(rs.getInt("carreras_ganadas"));
                     row.add(rs.getInt("num_races"));
-                    row.add(rs.getString("dob"));  // Adjust as per actual rank calculation if needed
+                    row.add(rs.getString("dob")); 
                     data.add(row);
                 }
 
