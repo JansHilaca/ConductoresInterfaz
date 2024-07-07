@@ -14,21 +14,8 @@ Este proyecto es una interfaz gráfica desarrollada en Java con Swing para visua
 - PostgreSQL con una base de datos configurada y datos de Fórmula 1.
 - Bibliotecas de Java Swing (incluidas en JDK).
 
-## Configuración de la Base de Datos
 
-1. Asegúrate de tener PostgreSQL instalado y en funcionamiento.
-2. Crea una base de datos llamada `Formula1`.
-3. Crea las tablas necesarias y puebla los datos relacionados con las carreras de Fórmula 1 (drivers, races, driver_standings, etc.).
-
-## Uso
-
-1. Clona este repositorio:
-    ```bash
-    git clone https://github.com/tu-usuario/interfaz-grafica-f1.git
-    cd interfaz-grafica-f1
-    ```
-
-2. Configura la conexión a la base de datos PostgreSQL en el archivo `InterfazGrafica.java`:
+2. Configuracion a la conexión a la base de datos PostgreSQL en el archivo `InterfazGrafica.java`:
     ```java
     private void connectDB() {
         try {
