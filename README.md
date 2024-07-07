@@ -153,14 +153,12 @@ public class InterfazGrafica {
                 pstmt.setInt(3, Integer.parseInt(selectedYear));
                 ResultSet rs = pstmt.executeQuery();
 
-                // Obtener columnas
                 Vector<String> columnNames = new Vector<>();
                 columnNames.add("Driver Name");
                 columnNames.add("Wins");
                 columnNames.add("Total Points");
                 columnNames.add("Rank");
 
-                // Obtener filas
                 Vector<Vector<Object>> data = new Vector<>();
                 while (rs.next()) {
                     Vector<Object> row = new Vector<>();
@@ -171,10 +169,8 @@ public class InterfazGrafica {
                     data.add(row);
                 }
 
-                // Actualizar modelo de la tabla
                 tableModel.setDataVector(data, columnNames);
 
-                // Centrar el contenido de las celdas
                 DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
                 centerRenderer.setHorizontalAlignment(JLabel.CENTER);
                 table.setDefaultRenderer(Object.class, centerRenderer);
