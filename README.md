@@ -38,7 +38,7 @@ Este proyecto es una interfaz gráfica desarrollada en Java con Swing para visua
 
 ## Captura de Pantalla
 
-![imagen](https://github.com/JansHilaca/ConductoresInterfaz/assets/168945853/82d7ea64-8c87-467a-8a6f-e8c43e20e474)
+![imagen](https://github.com/JansHilaca/ConductoresInterfaz/assets/168945853/0a2344af-c070-4656-a1fb-c347a21de6f9)
 
 ## Código Fuente
 
@@ -49,6 +49,9 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.sql.*;
 import java.util.Vector;
 
@@ -56,11 +59,14 @@ public class InterfazGrafica {
     private Connection conn;
     private JFrame frame;
     private JComboBox<String> comboBox;
-    private JTable table;
-    private DefaultTableModel tableModel;
+    private JTable driverTable;
+    private DefaultTableModel driverTableModel;
 
     public InterfazGrafica() {
+        // Establecer conexión a la base de datos PostgreSQL
         connectDB();
+
+        // Crear la interfaz gráfica
         createGUI();
     }
 
@@ -77,34 +83,41 @@ public class InterfazGrafica {
     }
 
     private void createGUI() {
-        frame = new JFrame("Tabla de Drivers por Año de Carrera");
+        frame = new JFrame("Tabla de Conductores por Año de Carrera");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(600, 400);
+        frame.setSize(800, 600);
         frame.setLayout(new BorderLayout());
 
+        // Panel superior para el ComboBox
         JPanel topPanel = new JPanel();
         topPanel.setLayout(new FlowLayout());
         JLabel yearLabel = new JLabel("Año:");
         topPanel.add(yearLabel);
 
+        // Combo box para seleccionar el año de carrera
         comboBox = new JComboBox<>();
         populateComboBox();
-        comboBox.addActionListener(e -> {
-            updateTable();
-        });
+        comboBox.addActionListener(e -> updateTables());
         topPanel.add(comboBox);
+
+        // Botón para exportar a CSV
+        JButton exportButton = new JButton("Exportar a CSV");
+        exportButton.addActionListener(this::exportToCSV);
+        topPanel.add(exportButton);
 
         frame.add(topPanel, BorderLayout.NORTH);
 
-        tableModel = new DefaultTableModel();
-        table = new JTable(tableModel);
-        JScrollPane scrollPane = new JScrollPane(table);
+        // Tabla para mostrar los datos de conductores
+        driverTableModel = new DefaultTableModel();
+        driverTable = new JTable(driverTableModel);
+        JScrollPane driverScrollPane = new JScrollPane(driverTable);
 
+        // Centrar el contenido de las celdas en la tabla
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-        table.setDefaultRenderer(Object.class, centerRenderer);
+        driverTable.setDefaultRenderer(Object.class, centerRenderer);
 
-        frame.add(scrollPane, BorderLayout.CENTER);
+        frame.add(driverScrollPane, BorderLayout.CENTER);
 
         frame.setVisible(true);
     }
@@ -123,48 +136,49 @@ public class InterfazGrafica {
         }
     }
 
-    private void updateTable() {
+    private void updateTables() {
+        updateDriverTable();
+    }
+
+    private void updateDriverTable() {
         try {
             String selectedYear = (String) comboBox.getSelectedItem();
             if (selectedYear != null) {
-                String query = "SELECT DISTINCT ON (d.driver_id) d.driver_id, d.forename, d.surname, d.dob, d.nationality, " +
-                        "(SELECT COUNT(*) FROM driver_standings ds INNER JOIN races r ON ds.race_id = r.race_id " +
-                        "WHERE ds.driver_id = d.driver_id AND r.year = ? AND ds.position = 1) AS carreras_ganadas, " +
-                        "(SELECT COUNT(*) FROM driver_standings ds INNER JOIN races r ON ds.race_id = r.race_id " +
-                        "WHERE ds.driver_id = d.driver_id AND r.year = ?) AS num_races " +
+                String query = "SELECT d.forename || ' ' || d.surname AS driver_name, " +
+                        "SUM(CASE WHEN ds.position = 1 THEN 1 ELSE 0 END) AS wins, " +
+                        "SUM(ds.points) AS total_points, " +
+                        "RANK() OVER (ORDER BY SUM(ds.points) DESC) AS rank " +
                         "FROM drivers d " +
                         "JOIN driver_standings ds ON d.driver_id = ds.driver_id " +
                         "JOIN races r ON ds.race_id = r.race_id " +
                         "WHERE r.year = ? " +
-                        "ORDER BY d.driver_id, r.date";
+                        "GROUP BY d.driver_id " +
+                        "ORDER BY rank";
 
                 PreparedStatement pstmt = conn.prepareStatement(query);
                 pstmt.setInt(1, Integer.parseInt(selectedYear));
-                pstmt.setInt(2, Integer.parseInt(selectedYear));
-                pstmt.setInt(3, Integer.parseInt(selectedYear));
                 ResultSet rs = pstmt.executeQuery();
 
+                // Obtener columnas
                 Vector<String> columnNames = new Vector<>();
                 columnNames.add("Driver Name");
                 columnNames.add("Wins");
                 columnNames.add("Total Points");
                 columnNames.add("Rank");
 
+                // Obtener filas
                 Vector<Vector<Object>> data = new Vector<>();
                 while (rs.next()) {
                     Vector<Object> row = new Vector<>();
-                    row.add(rs.getString("forename") + " " + rs.getString("surname"));
-                    row.add(rs.getInt("carreras_ganadas"));
-                    row.add(rs.getInt("num_races"));
-                    row.add(rs.getString("dob")); 
+                    row.add(rs.getString("driver_name"));
+                    row.add(rs.getInt("wins"));
+                    row.add(rs.getDouble("total_points"));
+                    row.add(rs.getInt("rank"));
                     data.add(row);
                 }
 
-                tableModel.setDataVector(data, columnNames);
-
-                DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
-                centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-                table.setDefaultRenderer(Object.class, centerRenderer);
+                // Actualizar modelo de la tabla
+                driverTableModel.setDataVector(data, columnNames);
 
                 rs.close();
                 pstmt.close();
@@ -174,7 +188,28 @@ public class InterfazGrafica {
         }
     }
 
+    private void exportToCSV(ActionEvent e) {
+        try (FileWriter csvWriter = new FileWriter("drivers.csv")) {
+            for (int i = 0; i < driverTableModel.getColumnCount(); i++) {
+                csvWriter.write(driverTableModel.getColumnName(i) + ",");
+            }
+            csvWriter.write("\n");
+
+            for (int i = 0; i < driverTableModel.getRowCount(); i++) {
+                for (int j = 0; j < driverTableModel.getColumnCount(); j++) {
+                    csvWriter.write(driverTableModel.getValueAt(i, j).toString() + ",");
+                }
+                csvWriter.write("\n");
+            }
+
+            JOptionPane.showMessageDialog(frame, "Datos exportados correctamente a drivers.csv");
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(frame, "Error al exportar los datos: " + ex.getMessage());
+        }
+    }
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(InterfazGrafica::new);
     }
 }
+
